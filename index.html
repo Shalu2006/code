@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BloomNet - Food Sharing Network</title>
+    <meta name="description" content="Connect food donors with shelters and those in need">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+            <h1>🌱 BloomNet</h1>
+            <div id="auth-section">
+                <button id="dark-mode-toggle" class="btn btn-icon" title="Toggle Dark Mode">🌙</button>
+                <button id="login-btn" class="btn btn-primary">Sign In</button>
+                <div id="user-info" style="display: none;">
+                    <span id="user-name"></span>
+                    <button id="logout-btn" class="btn btn-secondary">Logout</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Role Selection Modal -->
+    <div id="role-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-icon">👋</div>
+            <h2>Welcome! Choose Your Role</h2>
+            <p>Help us connect you with the right community</p>
+            <div class="role-buttons">
+                <button id="donor-btn" class="btn-role btn-donor">
+                    <span class="role-icon">🍽️</span>
+                    <div class="role-text">
+                        <strong>I'm a Donor</strong>
+                        <small>I have surplus food to share</small>
+                    </div>
+                </button>
+                <button id="shelter-btn" class="btn-role btn-shelter">
+                    <span class="role-icon">🏠</span>
+                    <div class="role-text">
+                        <strong>I'm a Shelter</strong>
+                        <small>I need food for my community</small>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Sidebar -->
+        <aside id="sidebar">
+            <div id="donor-panel" style="display: none;">
+                <div class="panel-header">
+                    <h2>🍽️ Post Food Surplus</h2>
+                    <p class="panel-subtitle">Share your surplus food with those in need</p>
+                </div>
+                
+                <!-- Enhanced Stats Card -->
+                <div class="stats-card">
+                    <div class="stat-item">
+                        <div class="stat-number" id="donor-stats-count">0</div>
+                        <div class="stat-label">Donations Posted</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="donor-stats-claimed">0</div>
+                        <div class="stat-label">Successfully Claimed</div>
+                    </div>
+                </div>
+                
+                <!-- Impact Metrics -->
+                <div class="impact-metrics-card">
+                    <h3 style="font-size: 0.9rem; margin-bottom: 0.8rem; color: #667eea;">🌟 Your Impact</h3>
+                    <div class="impact-metric">
+                        <span class="impact-icon">🍽️</span>
+                        <div class="impact-details">
+                            <div class="impact-value" id="donor-meals-saved">0</div>
+                            <div class="impact-label">Meals Saved</div>
+                        </div>
+                    </div>
+                    <div class="impact-metric">
+                        <span class="impact-icon">🌍</span>
+                        <div class="impact-details">
+                            <div class="impact-value" id="donor-co2-saved">0 kg</div>
+                            <div class="impact-label">CO₂ Prevented</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="donation-form">
+                    <div class="form-group">
+                        <label for="food-name">Food Item:</label>
+                        <input type="text" id="food-name" placeholder="e.g., Bread, Vegetables, Canned Goods" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="food-category">Category:</label>
+                        <select id="food-category" required>
+                            <option value="">Select category...</option>
+                            <option value="produce">🥬 Fresh Produce</option>
+                            <option value="bakery">🍞 Bakery Items</option>
+                            <option value="canned">🥫 Canned Goods</option>
+                            <option value="dairy">🥛 Dairy Products</option>
+                            <option value="meals">🍱 Prepared Meals</option>
+                            <option value="snacks">🍪 Snacks & Beverages</option>
+                            <option value="other">📦 Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="food-quantity">Quantity:</label>
+                        <input type="text" id="food-quantity" placeholder="e.g., 2 boxes, 50 meals" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="pickup-time">Pickup By:</label>
+                        <input type="datetime-local" id="pickup-time" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="food-notes">Additional Notes:</label>
+                        <textarea id="food-notes" placeholder="Any special instructions, dietary info, etc..." rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <span class="btn-text">Post Donation</span>
+                        <span class="btn-loader" style="display: none;">⏳ Posting...</span>
+                    </button>
+                </form>
+                
+                <!-- My Donations -->
+                <div class="my-donations-section" style="margin-top: 2rem; display: none;" id="my-donations-section">
+                    <h3 style="font-size: 1rem; margin-bottom: 1rem; color: #333;">My Recent Donations</h3>
+                    <div id="my-donations-list"></div>
+                </div>
+            </div>
+
+            <div id="shelter-panel" style="display: none;">
+                <div class="panel-header">
+                    <h2>📦 Available Donations</h2>
+                    <p class="panel-subtitle">Claim donations to help your community</p>
+                </div>
+                
+                <!-- Search and Filter -->
+                <div class="search-filter-section">
+                    <div class="search-box">
+                        <input type="text" id="search-donations" placeholder="🔍 Search donations...">
+                    </div>
+                    <div class="filter-row">
+                        <select id="filter-category" class="filter-select">
+                            <option value="">All Categories</option>
+                            <option value="produce">🥬 Fresh Produce</option>
+                            <option value="bakery">🍞 Bakery</option>
+                            <option value="canned">🥫 Canned Goods</option>
+                            <option value="dairy">🥛 Dairy</option>
+                            <option value="meals">🍱 Prepared Meals</option>
+                            <option value="snacks">🍪 Snacks</option>
+                            <option value="other">📦 Other</option>
+                        </select>
+                        <select id="sort-donations" class="filter-select">
+                            <option value="distance">📍 Nearest First</option>
+                            <option value="time">⏰ Newest First</option>
+                            <option value="quantity">📊 Quantity</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Stats Card -->
+                <div class="stats-card">
+                    <div class="stat-item">
+                        <div class="stat-number" id="shelter-stats-available">0</div>
+                        <div class="stat-label">Available Now</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="shelter-stats-claimed">0</div>
+                        <div class="stat-label">You Claimed</div>
+                    </div>
+                </div>
+                
+                <!-- Real-time Feed -->
+                <div class="realtime-feed-card" id="realtime-feed" style="display: none;">
+                    <h3 style="font-size: 0.9rem; margin-bottom: 0.8rem; color: #667eea;">⚡ Live Feed</h3>
+                    <div id="realtime-feed-list"></div>
+                </div>
+                
+                <div id="donations-list">
+                    <div class="empty-state-card">
+                        <div class="empty-icon">📭</div>
+                        <p class="empty-state">No donations available yet</p>
+                        <p class="empty-state-subtitle">Check back soon or spread the word!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="welcome-panel">
+                <div class="welcome-icon">🌱</div>
+                <h2>Welcome to BloomNet</h2>
+                <p class="welcome-subtitle">Connecting food donors with shelters and those in need</p>
+                
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">📍</div>
+                        <h3>Real-time Map</h3>
+                        <p>See available donations instantly on an interactive map</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🤝</div>
+                        <h3>Easy Matching</h3>
+                        <p>Connect donors and shelters with just one click</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">⚡</div>
+                        <h3>Instant Updates</h3>
+                        <p>Get notified the moment new donations are available</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔒</div>
+                        <h3>Secure & Safe</h3>
+                        <p>Verified users and secure transactions</p>
+                    </div>
+                </div>
+                
+                <!-- Leaderboard Section -->
+                <div class="leaderboard-section" id="leaderboard-section" style="margin-top: 2rem; display: none;">
+                    <h3 style="font-size: 1rem; margin-bottom: 1rem; color: #667eea; text-align: center;">🏆 Top Contributors</h3>
+                    <div id="leaderboard-list"></div>
+                </div>
+                
+                <div class="cta-section">
+                    <p class="cta-text">Ready to make a difference?</p>
+                    <button id="welcome-login-btn" class="btn btn-primary btn-large">Get Started</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Map Container -->
+        <main>
+            <!-- Beautiful Background Pattern -->
+            <div class="map-background-pattern"></div>
+            
+            <div id="map"></div>
+            <div id="map-overlay" class="map-overlay">
+                <div class="overlay-content">
+                    <h2>🌍 Explore Donations</h2>
+                    <p>Sign in to see real-time food donations on the map</p>
+                    <p class="overlay-subtitle">Help reduce food waste and feed those in need</p>
+                    <button id="dismiss-overlay-btn" class="btn btn-primary" style="margin-top: 1rem; background: white; color: #667eea;">Explore Map</button>
+                </div>
+            </div>
+            
+            <!-- Interactive Dashboard Widgets -->
+            <div class="dashboard-widgets" id="dashboard-widgets" style="display: none;">
+                <!-- Quick Stats Card -->
+                <div class="widget-card stats-widget">
+                    <div class="widget-header">
+                        <span class="widget-icon">📊</span>
+                        <h3>Quick Stats</h3>
+                    </div>
+                    <div class="widget-content">
+                        <div class="quick-stat">
+                            <span class="stat-value" id="widget-available">0</span>
+                            <span class="stat-label">Available Now</span>
+                        </div>
+                        <div class="quick-stat">
+                            <span class="stat-value" id="widget-claimed">0</span>
+                            <span class="stat-label">Claimed Today</span>
+                        </div>
+                        <div class="quick-stat">
+                            <span class="stat-value" id="widget-active">0</span>
+                            <span class="stat-label">Active Donors</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity Card -->
+                <div class="widget-card activity-widget">
+                    <div class="widget-header">
+                        <span class="widget-icon">⚡</span>
+                        <h3>Recent Activity</h3>
+                    </div>
+                    <div class="widget-content" id="recent-activity-list">
+                        <div class="activity-item">
+                            <span class="activity-icon">🌱</span>
+                            <span class="activity-text">Welcome to BloomNet!</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category Distribution Card -->
+                <div class="widget-card category-widget">
+                    <div class="widget-header">
+                        <span class="widget-icon">📦</span>
+                        <h3>Categories</h3>
+                    </div>
+                    <div class="widget-content" id="category-distribution">
+                        <div class="category-bar">
+                            <span class="category-label">🥬 Produce</span>
+                            <div class="category-progress">
+                                <div class="category-fill" data-category="produce" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="category-bar">
+                            <span class="category-label">🍞 Bakery</span>
+                            <div class="category-progress">
+                                <div class="category-fill" data-category="bakery" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="category-bar">
+                            <span class="category-label">🥫 Canned</span>
+                            <div class="category-progress">
+                                <div class="category-fill" data-category="canned" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Map Controls (Fixed Position) -->
+            <div id="map-controls" class="map-controls" style="display: none;">
+                <button id="locate-btn" class="map-control-btn" title="Find my location">📍</button>
+                <button id="refresh-map-btn" class="map-control-btn" title="Refresh donations">🔄</button>
+                <button id="toggle-widgets-btn" class="map-control-btn" title="Toggle Dashboard">📊</button>
+            </div>
+            
+            <!-- Enhanced Impact Banner -->
+            <div id="impact-banner" class="impact-banner" style="display: none;">
+                <div class="impact-content">
+                    <span class="impact-icon">🌱</span>
+                    <span class="impact-text">
+                        <strong id="impact-count">0</strong> meals shared • 
+                        <strong id="impact-co2">0 kg</strong> CO₂ prevented • 
+                        <strong id="impact-water">0L</strong> water saved
+                    </span>
+                    <button id="share-impact-btn" class="btn-share" title="Share Impact">📤</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- No Firebase Required! This version uses LocalStorage - Perfect for Hackathons! -->
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- App JS -->
+    <script src="app.js"></script>
+</body>
+</html>
+
